@@ -15,7 +15,7 @@ public class ServidorTarefas {
     public ServidorTarefas() throws IOException {
         System.out.println("-- iniciando servidor --");
         this.servidor = new ServerSocket(12345);
-        this.threadPool = Executors.newCachedThreadPool();
+        this.threadPool = Executors.newFixedThreadPool(4, new FabricaDeThreads());
         this.estaRodando = new AtomicBoolean(true);
     }
 
@@ -32,7 +32,7 @@ public class ServidorTarefas {
                 Socket socket = servidor.accept();
                 System.out.println("Aceitando novo cliente na porta " + socket.getPort());
 
-                DistribuirTarefas distribuirTarefa = new DistribuirTarefas(socket, this);
+                DistribuirTarefas distribuirTarefa = new DistribuirTarefas(threadPool, socket, this);
                 threadPool.execute(distribuirTarefa);
             } catch (SocketException e) {
                 System.out.println("socketExceptionm Extá rodando? " + this.estaRodando);
