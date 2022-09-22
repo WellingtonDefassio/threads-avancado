@@ -2,6 +2,8 @@ import java.io.IOException;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.net.SocketException;
+import java.util.concurrent.ArrayBlockingQueue;
+import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -12,11 +14,23 @@ public class ServidorTarefas {
     private final ServerSocket servidor;
     private AtomicBoolean estaRodando;
 
+    private BlockingQueue<String> filaComandos;
+
     public ServidorTarefas() throws IOException {
         System.out.println("-- iniciando servidor --");
         this.servidor = new ServerSocket(12345);
-        this.threadPool = Executors.newFixedThreadPool(4, new FabricaDeThreads());
+        this.threadPool = Executors.newCachedThreadPool(new FabricaDeThreads());
         this.estaRodando = new AtomicBoolean(true);
+        this.filaComandos = new ArrayBlockingQueue<>(2);
+        iniciarConsumidores();
+    }
+
+    private void iniciarConsumidores() {
+
+        for (int i = 0; i < 2; i++) {
+            TarefaConsumir tarefaConsumir = new TarefaConsumir(filaComandos);
+            this.threadPool.execute(tarefaConsumir);
+        }
     }
 
     public void parar() throws IOException {
@@ -32,7 +46,7 @@ public class ServidorTarefas {
                 Socket socket = servidor.accept();
                 System.out.println("Aceitando novo cliente na porta " + socket.getPort());
 
-                DistribuirTarefas distribuirTarefa = new DistribuirTarefas(threadPool, socket, this);
+                DistribuirTarefas distribuirTarefa = new DistribuirTarefas(threadPool, filaComandos, socket, this);
                 threadPool.execute(distribuirTarefa);
             } catch (SocketException e) {
                 System.out.println("socketExceptionm Extá rodando? " + this.estaRodando);
